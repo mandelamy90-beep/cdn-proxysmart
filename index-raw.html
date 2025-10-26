@@ -1,0 +1,241 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Proxysmart</title>
+    <style>
+        :root {
+            --accent: #3b82f6;
+            --bg: #0f172a;
+            --card: #0b1220;
+            --muted: #94a3b8
+        }
+
+        body {
+            font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
+            background: linear-gradient(180deg, #071025 0%, #071a2a 100%);
+            color: #e6eef8;
+            margin: 0;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 28px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03)
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .logo img {
+            height: 48px;
+            width: auto
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 28px auto;
+            padding: 20px
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 18px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(2, 6, 23, 0.6)
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 22px
+        }
+
+        form {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px
+        }
+
+        input[type=text] {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: transparent;
+            color: inherit
+        }
+
+        button {
+            background: var(--accent);
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            color: #032;
+            cursor: pointer;
+            font-weight: 600
+        }
+
+        .small {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 16px;
+            margin-top: 18px
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.01);
+            margin-bottom: 8px
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .pill {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 12px;
+            border-radius: 999px
+        }
+
+        footer {
+            margin-top: 30px;
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center
+        }
+
+        /* logo spacer for precise dimensions - contains placeholder image sized 4366x679px (scaled down) */
+        .logo-placeholder {
+            width: 160px;
+            height: 25px;
+            display: block
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="https://raw.githubusercontent.com/mandelamy90-beep/cdn/refs/heads/main/ProxysmartLogo.png" alt="Proxysmart logo" onerror="this.style.display='none'" />
+            <div>
+                <div style="font-weight:700">Proxysmart</div>
+                <div class="small">Enterprise CORS proxy & metrics</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="pill small" id="user-info">Not signed in</div>
+        </div>
+    </header>
+    <main class="container">
+        <div class="card">
+            <h1>Create a proxied link</h1>
+            <p class="small">Enter the URL you want proxied (eg. https://example.com). We'll create a proxied link you
+                can share — requests to that link will return permissive CORS headers.</p>
+            <form id="create-form">
+                <input type="text" id="target" placeholder="https://example.com/path" required />
+                <button type="submit">Create</button>
+            </form>
+            <div id="result" style="margin-top:12px"></div>
+            <div class="grid">
+                <div>
+                    <h3 style="margin-top:18px">Your Proxies</h3>
+                    <div id="proxies-list" style="margin-top:8px"></div>
+                </div>
+                <div>
+                    <div class="card" style="padding:12px">
+                        <h4>Account</h4>
+                        <div id="auth-area" style="margin-top:8px">
+                            <input placeholder="email" id="email"
+                                style="width:100%;padding:8px;margin-bottom:8px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:inherit" />
+                            <input placeholder="password" id="password" type="password"
+                                style="width:100%;padding:8px;margin-bottom:8px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:inherit" />
+                            <div style="display:flex;gap:8px">
+                                <button id="btn-register">Register</button>
+                                <button id="btn-login" type="button">Login</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer>Built with ❤️ — Proxysmart | Proxysmart is a part of Dolphin Digital Group. All rights reserved. © 2025 Dolphin Digital Group.</footer>
+    </main>
+
+    <script>
+        const API_BASE = '/api';
+
+
+        async function api(path, opts = {}) {
+            const res = await fetch(API_BASE + path, opts);
+            if (res.headers.get('content-type')?.includes('application/json')) return res.json();
+            return res.text();
+        }
+
+
+        async function renderProxies() {
+            const list = document.getElementById('proxies-list');
+            list.innerHTML = '<div class="small muted">Loading...</div>';
+            const r = await api('/proxies', { credentials: 'include' }).catch(() => ({ error: 'not auth' }));
+            if (r?.error) { list.innerHTML = '<div class="small muted">Sign in to see your proxies</div>'; return; }
+            if (r.length === 0) { list.innerHTML = '<div class="small muted">No proxies yet</div>'; return; }
+            list.innerHTML = r.map(p => `< div class="list-item" ><div><div style="font-weight:600">${p.title || p.original_url}</div><div class="small muted">${p.original_url}</div></div><div style="text-align:right"><div><a class="small" href="/p/${p.id}" target="_blank">/p/${p.id}</a></div><div class="small muted">hits: ${p.hits}</div></div></div > `).join('');
+        }
+
+        async function whoami() {
+            const info = await api('/me', { credentials: 'include' }).catch(() => null);
+            const elem = document.getElementById('user-info');
+            if (info && info.email) elem.textContent = info.email; else elem.textContent = 'Not signed in';
+        }
+
+
+        document.getElementById('create-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('target').value.trim();
+            const res = await api('/create', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+            if (res.error) { document.getElementById('result').innerHTML = '<div class="small muted">' + res.error + '</div>'; return; }
+            document.getElementById('result').innerHTML = `< div class="small" > Created: <a href="/p/${res.id}" target="_blank">/p/${res.id}</a></div > `;
+            renderProxies();
+        });
+
+
+        document.getElementById('btn-register').addEventListener('click', async () => {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const res = await api('/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+            if (res.error) alert(res.error); else { alert('Registered — please login'); }
+        });
+
+
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const res = await api('/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+            if (res.error) alert(res.error); else { await whoami(); renderProxies(); }
+        });
+
+
+        // init
+        whoami(); renderProxies();
+    </script>
+</body>
+</html>
